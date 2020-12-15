@@ -1,0 +1,13 @@
+*
+!*/
+!*.c
+!*.txt
+!*.h
+!*.bin
+!Makefile
+!README
+!/.gitignore
+!final-src-osc10e.rar
+CMakeLists.txt
+cmake-build-debug/
+*.mod.c
