@@ -7,7 +7,7 @@
 
 int request_resources(int customer_num, int request[]);
 
-void release_resources(int customer_num, int release[]);
+int release_resources(int customer_num, int release[]);
 
 int check_safety();
 

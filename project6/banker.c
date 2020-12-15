@@ -102,12 +102,20 @@ int request_resources(int customer_num, int request[]) {
 }
 
 
-void release_resources(int customer_num, int release[]) {
+int release_resources(int customer_num, int release[]) {
+    for (int j = 0; j < NUMBER_OF_RESOURCES; ++j) {
+        if (allocation[customer_num][j] < release[j]) {
+            return -1;
+        }
+    }
+
     for (int j = 0; j < NUMBER_OF_RESOURCES; ++j) {
         available[j] += release[j];
         allocation[customer_num][j] -= release[j];
         need[customer_num][j] += release[j];
     }
+
+    return 0;
 }
 
 
@@ -145,6 +153,7 @@ int main(int argc, const char *const *argv) {
             for (int i = 0; i < NUMBER_OF_RESOURCES + 1; ++i) {
                 scanf("%d", arguments + i);
             }
+
             if (!request_resources(arguments[0], arguments + 1)) {
                 printf("Done!\n");
             } else {
@@ -155,9 +164,14 @@ int main(int argc, const char *const *argv) {
 
         if (!strcmp(command, "RL")) {
             for (int i = 0; i < NUMBER_OF_RESOURCES + 1; ++i) {
-                scanf("%d ", arguments + i);
+                scanf("%d", arguments + i);
             }
-            release_resources(arguments[0], arguments + 1);
+
+            if (!release_resources(arguments[0], arguments + 1)){
+                printf("Done!\n");
+            } else {
+                printf("GG!\n");
+            }
             continue;
         }
 
