@@ -4,6 +4,11 @@
 #include <string.h>
 #include "banker.h"
 
+int available[NUMBER_OF_RESOURCES];
+int maximum[NUMBER_OF_CUSTOMERS][NUMBER_OF_RESOURCES];
+int allocation[NUMBER_OF_CUSTOMERS][NUMBER_OF_RESOURCES];
+int need[NUMBER_OF_CUSTOMERS][NUMBER_OF_RESOURCES];
+
 int check_safety() {
     int satisfy[NUMBER_OF_CUSTOMERS] = {};
     int count = 0;
@@ -11,6 +16,7 @@ int check_safety() {
     memcpy(temp_available, available, sizeof(available));
 
     while (1) {
+        // we have complete all the process
         if (count == NUMBER_OF_CUSTOMERS) {
             return 0;
         }
@@ -32,6 +38,8 @@ int check_safety() {
             if (flag) {
                 continue;
             } else {
+                //that thread could complete and we should
+                //recycle the resource
                 for (int j = 0; j < NUMBER_OF_RESOURCES; ++j) {
                     temp_available[j] += allocation[i][j];
                 }
@@ -59,6 +67,7 @@ void read_maximum_request() {
             fscanf(ptr, "%d,", ((int *) (maximum + i)) + j);
             need[i][j] = maximum[i][j];
         }
+        // at the end of a line, there is no ','
         fscanf(ptr, "%d ", ((int *) (maximum + i)) + NUMBER_OF_RESOURCES - 1);
         need[i][NUMBER_OF_RESOURCES - 1] = maximum[i][NUMBER_OF_RESOURCES - 1];
     }
@@ -67,17 +76,19 @@ void read_maximum_request() {
 
 int request_resources(int customer_num, int request[]) {
     for (int i = 0; i < NUMBER_OF_RESOURCES; ++i) {
-        if (request[i] > available[i]) {
+        if (request[i] > available[i] || request[i] > need[customer_num][i]) {
             return -1;
         }
     }
 
+    // try to alloc resource for that process
     for (int i = 0; i < NUMBER_OF_RESOURCES; ++i) {
         available[i] -= request[i];
         allocation[customer_num][i] += request[i];
         need[customer_num][i] -= request[i];
     }
 
+    //if the allocation is not safe, return the resource back
     if (check_safety()) {
         for (int j = 0; j < NUMBER_OF_RESOURCES; ++j) {
             available[j] += request[j];
@@ -89,6 +100,7 @@ int request_resources(int customer_num, int request[]) {
 
     return 0;
 }
+
 
 void release_resources(int customer_num, int release[]) {
     for (int j = 0; j < NUMBER_OF_RESOURCES; ++j) {
