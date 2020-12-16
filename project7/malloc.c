@@ -3,7 +3,7 @@
 #include "malloc.h"
 
 alloc_node *alloc_head;
-free_node  *free_head;
+free_node *free_head;
 int total_size;
 
 free_node *build_free_node(int start, int end) {
@@ -163,18 +163,18 @@ void compact() {
     alloc_node *alloc_ptr = alloc_head, *alloc_last;
 
     int alloc_address_start = 0;
-    while(traverse_list((void ***)&alloc_last, (void ***)&alloc_ptr)){
+    while (traverse_list((void ***) &alloc_last, (void ***) &alloc_ptr)) {
         alloc_ptr->end = alloc_ptr->end - alloc_ptr->start + alloc_address_start;
         alloc_ptr->start = alloc_address_start;
         alloc_address_start = alloc_ptr->end + 1;
     }
 
-    while (free_head->next){
-        delete_node((void **)free_head);
+    while (free_head->next) {
+        delete_node((void **) free_head);
     }
 
-    insert_node((void **)free_head,
-            (void **)build_free_node(alloc_address_start, total_size - 1));
+    insert_node((void **) free_head,
+                (void **) build_free_node(alloc_address_start, total_size - 1));
 }
 
 void show_stat() {
@@ -184,24 +184,24 @@ void show_stat() {
     while (free_ptr && alloc_ptr) {
         if (free_ptr->start < alloc_ptr->start) {
             printf("Address [%d:%d] Unused\n", free_ptr->start,
-                    free_ptr->end);
+                   free_ptr->end);
             free_ptr = free_ptr->next;
         } else {
             printf("Address [%d:%d] Process %s\n", alloc_ptr->start,
-                    alloc_ptr->end, alloc_ptr->name);
+                   alloc_ptr->end, alloc_ptr->name);
             alloc_ptr = alloc_ptr->next;
         }
     }
 
     while (free_ptr) {
         printf("Address [%d:%d] Unused\n", free_ptr->start,
-                free_ptr->end);
+               free_ptr->end);
         free_ptr = free_ptr->next;
     }
 
     while (alloc_ptr) {
         printf("Address [%d:%d] Process %s\n", alloc_ptr->start,
-                alloc_ptr->end, alloc_ptr->name);
+               alloc_ptr->end, alloc_ptr->name);
         alloc_ptr = alloc_ptr->next;
     }
 }
