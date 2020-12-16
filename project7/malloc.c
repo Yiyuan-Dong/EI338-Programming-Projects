@@ -2,6 +2,10 @@
 #include <string.h>
 #include "malloc.h"
 
+alloc_node *alloc_head;
+free_node  *free_head;
+int total_size;
+
 free_node *build_free_node(int start, int end) {
     free_node *ptr = malloc(sizeof(free_node));
     ptr->start = start;
@@ -32,36 +36,37 @@ void insert_node(void **last, void **ptr) {
     *last = (void *) ptr;
 }
 
+void *traverse_list(void ***last, void ***curr) {
+    *last = *curr;
+    *curr = (void **) **curr;
+    return *curr;
+}
 
 free_node *find_space_F(int space_size) {
-    free_node *ptr = free_head->next;
-    free_node *last = free_head;
+    free_node *ptr = free_head;
+    free_node *last;
 
-    while (ptr != NULL) {
+    while (traverse_list((void ***) &last, (void ***) &ptr)) {
         if (ptr->end - ptr->start + 1 >= space_size) {
             return last;
         }
-        ptr = ptr->next;
-        last = last->next;
     }
 
     return NULL;
 }
 
 free_node *find_space_B(int space_size) {
-    free_node *ptr = free_head->next;
-    free_node *last = free_head;
+    free_node *ptr = free_head;
+    free_node *last;
     int best_num = 2147483647;
     free_node *best_last = NULL;
-    while (ptr != NULL) {
+    while (traverse_list((void ***) &last, (void ***) &ptr)) {
         if (ptr->end - ptr->start + 1 >= space_size) {
             if (ptr->end - ptr->start + 1 - space_size < best_num) {
                 best_num = ptr->end - ptr->start + 1 - space_size;
                 best_last = last;
             }
         }
-        ptr = ptr->next;
-        last = last->next;
     }
 
     return best_last;
@@ -69,34 +74,30 @@ free_node *find_space_B(int space_size) {
 
 
 free_node *find_space_W(int space_size) {
-    free_node *ptr = free_head->next;
-    free_node *last = free_head;
+    free_node *ptr = free_head;
+    free_node *last;
     int worst_num = 0;
     free_node *worst_last = NULL;
-    while (ptr != NULL) {
+    while (traverse_list((void ***) &last, (void ***) &ptr)) {
         if (ptr->end - ptr->start + 1 >= space_size) {
             if (ptr->end - ptr->start + 1 - space_size > worst_num) {
                 worst_num = ptr->end - ptr->start - space_size + 1;
                 worst_last = last;
             }
         }
-        ptr = ptr->next;
-        last = last->next;
     }
 
     return worst_last;
 }
 
 void insert_alloc(int start, int end, char *name) {
-    alloc_node *ptr = alloc_head->next;
-    alloc_node *last = alloc_head;
+    alloc_node *ptr = alloc_head;
+    alloc_node *last;
 
-    while (ptr != NULL) {
+    while (traverse_list((void ***) &last, (void ***) &ptr)) {
         if (ptr->start > start) {
             break;
         }
-        last = ptr;
-        ptr = ptr->next;
     }
 
     insert_node((void **) last, (void **) build_alloc_node(start, end, name));
@@ -115,58 +116,65 @@ void cut_free_space(free_node *last, int space_size, char *name) {
         insert_node((void **) last,
                     (void **) build_free_node(free_start, free_end));
     }
+
     insert_alloc(alloc_start, alloc_end, name);
 }
 
 
 alloc_node *find_by_name(char *name) {
-    alloc_node *ptr = alloc_head->next;
-    alloc_node *last = alloc_head;
-    while (ptr != NULL) {
+    alloc_node *ptr = alloc_head;
+    alloc_node *last;
+    while (traverse_list((void ***) &last, (void ***) &ptr)) {
         if (!strcmp(ptr->name, name)) {
             return last;
         }
-        last = ptr;
-        ptr = ptr->next;
     }
     return NULL;
 }
 
-void insert_alloc_into_free(alloc_node *alloc_ptr) {
-    free_node *last = free_head;
-    free_node *ptr = free_head->next;
 
-    while (ptr) {
-        if (ptr->start > alloc_ptr->start) {
+void release_node(alloc_node *alloc_last) {
+    alloc_node *alloc_ptr = alloc_last->next;
+    free_node *free_ptr = free_head;
+    free_node *free_last;
+    int free_end = alloc_ptr->end, free_start = alloc_ptr->start;
+
+    while (traverse_list((void ***) &free_last, (void ***) &free_ptr)) {
+        if (free_ptr->start > alloc_ptr->start) {
             break;
         }
-        last = ptr;
-        ptr = ptr->next;
     }
 
-    insert_node((void **) last, (void **) build_free_node(alloc_ptr->start, alloc_ptr->end));
-}
+    if (free_ptr->start == free_end + 1) {
+        free_end = free_ptr->end;
+        delete_node((void **) free_last);
+    }
 
-void release_node(alloc_node *last) {
-    alloc_node *ptr = last->next;
-    insert_alloc_into_free(ptr);
-    delete_node((void **) last);
+    if (free_last->end == free_start - 1) {
+        free_last->end = free_end;
+    } else {
+        insert_node((void **) free_last, (void **) build_free_node(free_start, free_end));
+    }
+
+    delete_node((void **) alloc_last);
 }
 
 void compact() {
-    free_node *last = free_head;
-    free_node *ptr = free_head->next;
+    alloc_node *alloc_ptr = alloc_head, *alloc_last;
 
-    while (ptr) {
-        if (last->end + 1 == ptr->start) {
-            last->end = ptr->end;
-            ptr = ptr->next;
-            delete_node((void **) last);
-        } else {
-            last = ptr;
-            ptr = ptr->next;
-        }
+    int alloc_address_start = 0;
+    while(traverse_list((void ***)&alloc_last, (void ***)&alloc_ptr)){
+        alloc_ptr->end = alloc_ptr->end - alloc_ptr->start + alloc_address_start;
+        alloc_ptr->start = alloc_address_start;
+        alloc_address_start = alloc_ptr->end + 1;
     }
+
+    while (free_head->next){
+        delete_node((void **)free_head);
+    }
+
+    insert_node((void **)free_head,
+            (void **)build_free_node(alloc_address_start, total_size - 1));
 }
 
 void show_stat() {
@@ -175,23 +183,25 @@ void show_stat() {
 
     while (free_ptr && alloc_ptr) {
         if (free_ptr->start < alloc_ptr->start) {
-            printf("Address [%d:%d] Unused\n", free_ptr->start, free_ptr->end);
+            printf("Address [%d:%d] Unused\n", free_ptr->start,
+                    free_ptr->end);
             free_ptr = free_ptr->next;
         } else {
-            printf("Address [%d:%d] Process %s\n", alloc_ptr->start, alloc_ptr->end,
-                   alloc_ptr->name);
+            printf("Address [%d:%d] Process %s\n", alloc_ptr->start,
+                    alloc_ptr->end, alloc_ptr->name);
             alloc_ptr = alloc_ptr->next;
         }
     }
 
     while (free_ptr) {
-        printf("Address [%d:%d] Unused\n", free_ptr->start, free_ptr->end);
+        printf("Address [%d:%d] Unused\n", free_ptr->start,
+                free_ptr->end);
         free_ptr = free_ptr->next;
     }
 
     while (alloc_ptr) {
-        printf("Address [%d:%d] Process %s\n", alloc_ptr->start, alloc_ptr->end,
-               alloc_ptr->name);
+        printf("Address [%d:%d] Process %s\n", alloc_ptr->start,
+                alloc_ptr->end, alloc_ptr->name);
         alloc_ptr = alloc_ptr->next;
     }
 }
@@ -205,9 +215,9 @@ int main(int argc, char **argv) {
     free_head = build_free_node(-2, -2);
     alloc_head = build_alloc_node(-2, -2, "");
 
-    int maximum = atoi(argv[1]);
+    total_size = atoi(argv[1]);
     insert_node((void **) free_head,
-                (void **) build_free_node(0, maximum - 1));
+                (void **) build_free_node(0, total_size - 1));
 
     char command[8], command_2[8], command_3[8];
     int argument, argument_2;

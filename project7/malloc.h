@@ -24,8 +24,4 @@ void delete_node(void **last);
 
 void insert_node(void **last, void **ptr);
 
-
-alloc_node *alloc_head;
-free_node  *free_head;
-
 #endif //PROJECT7_MALLOC_H
